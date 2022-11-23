@@ -11,6 +11,7 @@ import {
     TestERC20, TestERC721,
     TestZone
 } from "../typechain-types";
+import {minRandom} from "./utils/helpers";
 export {
     fixtureERC20,
     fixtureERC721,
@@ -90,21 +91,53 @@ describe("Manual", () => {
     })
 
     describe("Basic", () => {
-        it("ERC721 <=> ETH (standard)", async () => {
+        it("ERC721 <=> ERC20 (standard)", async () => {
             const nftId = await mintAndApprove721(
                 seller,
                 marketplaceContract.address
             );
 
+            // Buyer mints ERC20
+            const tokenAmount = minRandom(100);
+            console.log('tokenAmount: ', tokenAmount.toString())
+            await mintAndApproveERC20(
+                buyer,
+                marketplaceContract.address,
+                tokenAmount
+            );
+
             const offer = [getTestItem721(nftId)];
 
+            const buyerBalance = await testERC20.balanceOf(buyer.address)
+            console.log('buyerBalance: ', buyerBalance.toString())
+            const sellerBalance = await testERC20.balanceOf(seller.address)
+            console.log('sellerBalance: ', sellerBalance.toString())
+            const zoneBalance = await testERC20.balanceOf(zone.address)
+            console.log('zoneBalance: ', zoneBalance.toString())
+            const ownerBalance = await testERC20.balanceOf(zone.address)
+            console.log('ownerBalance: ', ownerBalance.toString())
+            const buyerNftBalance = await testERC721.balanceOf(buyer.address)
+            console.log('buyerNftBalance: ', buyerNftBalance.toString())
+            const sellerNftBalance = await testERC721.balanceOf(seller.address)
+            console.log('sellerNftBalance: ', sellerNftBalance.toString())
+            const zoneNftBalance = await testERC721.balanceOf(zone.address)
+            console.log('zoneNftBalance: ', zoneNftBalance.toString())
+            const ownerNftBalance = await testERC721.balanceOf(zone.address)
+            console.log('ownerNftBalance: ', ownerNftBalance.toString())
+
             const consideration = [
-                getItemETH(parseEther("10"), parseEther("10"), seller.address),
-                getItemETH(parseEther("1"), parseEther("1"), zone.address),
-                getItemETH(parseEther("1"), parseEther("1"), owner.address),
+                getTestItem20(
+                    // tokenAmount.sub(100),
+                    // tokenAmount.sub(100),
+                    100,
+                    102,
+                    seller.address
+                ),
+                getTestItem20(50, 52, zone.address),
+                getTestItem20(50, 52, owner.address),
             ];
 
-            const { order, orderHash, value } = await createOrder(
+            const { order, orderHash } = await createOrder(
                 seller,
                 zone,
                 offer,
@@ -115,19 +148,127 @@ describe("Manual", () => {
             await withBalanceChecks([order], 0, undefined, async () => {
                 const tx = marketplaceContract
                     .connect(buyer)
-                    .fulfillOrder(order, toKey(0), {
-                        value,
-                    });
+                    .fulfillOrder(order, toKey(0));
+                const receipt = await (await tx).wait();
+                // console.log('receipt: ', receipt)
+                // const events = await testERC20.queryFilter(testERC20.filters.Transfer())
+                // console.log('events: ', events)
+                await checkExpectedEvents(tx, receipt, [
+                    {
+                        order,
+                        orderHash,
+                        fulfiller: buyer.address,
+                        fulfillerConduitKey: toKey(0),
+                    },
+                ]);
+                return receipt;
+            });
+            const buyerBalance2 = await testERC20.balanceOf(buyer.address)
+            console.log('buyerBalance2: ', buyerBalance2.toString())
+            const sellerBalance2 = await testERC20.balanceOf(seller.address)
+            console.log('sellerBalance2: ', sellerBalance2.toString())
+            const zoneBalance2 = await testERC20.balanceOf(zone.address)
+            console.log('zoneBalance2: ', zoneBalance2.toString())
+            const ownerBalance2 = await testERC20.balanceOf(zone.address)
+            console.log('ownerBalance2: ', ownerBalance2.toString())
+            const buyerNftBalance2 = await testERC721.balanceOf(buyer.address)
+            console.log('buyerNftBalance2: ', buyerNftBalance2.toString())
+            const sellerNftBalance2 = await testERC721.balanceOf(seller.address)
+            console.log('sellerNftBalance2: ', sellerNftBalance2.toString())
+            const zoneNftBalance2 = await testERC721.balanceOf(zone.address)
+            console.log('zoneNftBalance2: ', zoneNftBalance2.toString())
+            const ownerNftBalance2 = await testERC721.balanceOf(zone.address)
+            console.log('ownerNftBalance2: ', ownerNftBalance2.toString())
+        });
+
+        it("ERC721 <=> ERC20 (standard via conduit)", async () => {
+            const nftId = await mintAndApprove721(seller, conduitOne.address);
+
+            // Buyer mints ERC20
+            const tokenAmount = minRandom(100);
+            await mintAndApproveERC20(
+                buyer,
+                marketplaceContract.address,
+                tokenAmount
+            );
+
+            const offer = [getTestItem721(nftId)];
+
+            const buyerBalance = await testERC20.balanceOf(buyer.address)
+            console.log('buyerBalance: ', buyerBalance.toString())
+            const sellerBalance = await testERC20.balanceOf(seller.address)
+            console.log('sellerBalance: ', sellerBalance.toString())
+            const zoneBalance = await testERC20.balanceOf(zone.address)
+            console.log('zoneBalance: ', zoneBalance.toString())
+            const ownerBalance = await testERC20.balanceOf(zone.address)
+            console.log('ownerBalance: ', ownerBalance.toString())
+            const buyerNftBalance = await testERC721.balanceOf(buyer.address)
+            console.log('buyerNftBalance: ', buyerNftBalance.toString())
+            const sellerNftBalance = await testERC721.balanceOf(seller.address)
+            console.log('sellerNftBalance: ', sellerNftBalance.toString())
+            const zoneNftBalance = await testERC721.balanceOf(zone.address)
+            console.log('zoneNftBalance: ', zoneNftBalance.toString())
+            const ownerNftBalance = await testERC721.balanceOf(zone.address)
+            console.log('ownerNftBalance: ', ownerNftBalance.toString())
+
+            const consideration = [
+                getTestItem20(
+                    tokenAmount.sub(100),
+                    tokenAmount.sub(100),
+                    seller.address
+                ),
+                getTestItem20(50, 50, zone.address),
+                getTestItem20(50, 50, owner.address),
+            ];
+
+
+            const { order, orderHash } = await createOrder(
+                seller,
+                zone,
+                offer,
+                consideration,
+                0, // FULL_OPEN
+                [],
+                null,
+                seller,
+                ethers.constants.HashZero,
+                conduitKeyOne
+            );
+
+            await withBalanceChecks([order], 0, undefined, async () => {
+                const tx = marketplaceContract
+                    .connect(buyer)
+                    .fulfillOrder(order, toKey(0));
                 const receipt = await (await tx).wait();
                 await checkExpectedEvents(tx, receipt, [
                     {
                         order,
                         orderHash,
                         fulfiller: buyer.address,
+                        fulfillerConduitKey: toKey(0),
                     },
                 ]);
+
                 return receipt;
             });
+
+            const buyerBalance2 = await testERC20.balanceOf(buyer.address)
+            console.log('buyerBalance2: ', buyerBalance2.toString())
+            const sellerBalance2 = await testERC20.balanceOf(seller.address)
+            console.log('sellerBalance2: ', sellerBalance2.toString())
+            const zoneBalance2 = await testERC20.balanceOf(zone.address)
+            console.log('zoneBalance2: ', zoneBalance2.toString())
+            const ownerBalance2 = await testERC20.balanceOf(zone.address)
+            console.log('ownerBalance2: ', ownerBalance2.toString())
+            const buyerNftBalance2 = await testERC721.balanceOf(buyer.address)
+            console.log('buyerNftBalance2: ', buyerNftBalance2.toString())
+            const sellerNftBalance2 = await testERC721.balanceOf(seller.address)
+            console.log('sellerNftBalance2: ', sellerNftBalance2.toString())
+            const zoneNftBalance2 = await testERC721.balanceOf(zone.address)
+            console.log('zoneNftBalance2: ', zoneNftBalance2.toString())
+            const ownerNftBalance2 = await testERC721.balanceOf(zone.address)
+            console.log('ownerNftBalance2: ', ownerNftBalance2.toString())
         });
+
     })
 })
