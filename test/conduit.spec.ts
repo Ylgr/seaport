@@ -144,6 +144,12 @@ describe(`Conduit tests (Seaport v${VERSION})`, function () {
     await testERC1155.mint(seller.address, secondNftId, secondAmount.mul(2));
     await set1155ApprovalForAll(seller, tempConduit.address, true);
 
+    console.log('nft1: ', (await testERC1155.balanceOf(owner.address, nftId)).toString())
+    console.log('nft2: ', (await testERC1155.balanceOf(owner.address, secondNftId)).toString())
+
+    console.log('nft1: ', (await testERC1155.balanceOf(seller.address, nftId)).toString())
+    console.log('nft2: ', (await testERC1155.balanceOf(seller.address, secondNftId)).toString())
+
     await tempConduit.connect(seller).executeWithBatch1155(
       [],
       [
@@ -163,6 +169,15 @@ describe(`Conduit tests (Seaport v${VERSION})`, function () {
         },
       ]
     );
+
+    console.log('nft1: ', (await testERC1155.balanceOf(owner.address, nftId)).toString())
+    console.log('nft2: ', (await testERC1155.balanceOf(owner.address, secondNftId)).toString())
+
+    console.log('nft1: ', (await testERC1155.balanceOf(seller.address, nftId)).toString())
+    console.log('nft2: ', (await testERC1155.balanceOf(seller.address, secondNftId)).toString())
+
+    console.log('nft1: ', (await testERC1155.balanceOf(buyer.address, nftId)).toString())
+    console.log('nft2: ', (await testERC1155.balanceOf(buyer.address, secondNftId)).toString())
   });
 
   it("Adds a channel, and executes only batch transfers (ERC1155 with batch)", async () => {
