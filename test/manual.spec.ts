@@ -1,7 +1,7 @@
 import {expect} from "chai";
 import {ethers, network} from "hardhat";
 import {seaportFixture, SeaportFixtures, tokensFixture} from "./utils/fixtures";
-import {buildOrderStatus, getItemETH, randomHex, toKey} from "./utils/encoding";
+import {buildOrderStatus, getItemETH, randomHex, toBN, toKey} from "./utils/encoding";
 import {faucet} from "./utils/faucet";
 import { Wallet } from "ethers";
 import {
@@ -289,10 +289,11 @@ describe("Manual", () => {
                 const { nftId, amount } = await mintAndApprove1155(
                     seller,
                     marketplaceContract.address,
-                    10000
+                    10000, undefined, 120000
                 );
                 // Buyer mints ERC20
-                const tokenAmount = minRandom(100);
+                // const tokenAmount = minRandom(100);
+                const tokenAmount = toBN(1000);
                 await mintAndApproveERC20(
                     buyer,
                     marketplaceContract.address,
@@ -355,7 +356,7 @@ describe("Manual", () => {
                     .connect(seller)
                     .activate(offer[0], consideration[0]);
 
-                const offererContractBalance2 = await testERC721.balanceOf(offererContract.address)
+                const offererContractBalance2 = await testERC20.balanceOf(offererContract.address)
                 console.log('offererContractBalance2: ', offererContractBalance2.toString())
 
                 const offererContractNftBalance2 = await testERC1155.balanceOf(offererContract.address, nftId)
@@ -402,6 +403,15 @@ describe("Manual", () => {
                 order.denominator = 1;
                 order.signature = "0x";
 
+                // const orderWithoutOffer = JSON.parse(JSON.stringify(order));
+                // orderWithoutOffer.parameters.offer = [];
+
+                // const orderWithSmallerOfferAmount = JSON.parse(JSON.stringify(order));
+                // orderWithSmallerOfferAmount.parameters.offer[0].startAmount =
+                //     order.parameters.offer[0].startAmount.sub(1);
+                // orderWithSmallerOfferAmount.parameters.offer[0].endAmount =
+                //     order.parameters.offer[0].endAmount.sub(1);
+
                 await withBalanceChecks([order], 0, [], async () => {
                     const tx = marketplaceContract
                         .connect(buyer)
@@ -433,7 +443,7 @@ describe("Manual", () => {
                     return receipt;
                 });
 
-                const offererContractBalance3 = await testERC721.balanceOf(offererContract.address)
+                const offererContractBalance3 = await testERC20.balanceOf(offererContract.address)
                 console.log('offererContractBalance3: ', offererContractBalance3.toString())
 
                 const offererContractNftBalance3 = await testERC1155.balanceOf(offererContract.address, nftId)
