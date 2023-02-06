@@ -1,7 +1,7 @@
 import {expect} from "chai";
 import {ethers, network} from "hardhat";
 import {seaportFixture, SeaportFixtures, tokensFixture} from "./utils/fixtures";
-import {getItemETH, randomHex, toKey} from "./utils/encoding";
+import {buildOrderStatus, getItemETH, randomHex, toKey} from "./utils/encoding";
 import {faucet} from "./utils/faucet";
 import { Wallet } from "ethers";
 import {
@@ -12,6 +12,7 @@ import {
     TestZone
 } from "../typechain-types";
 import {minRandom} from "./utils/helpers";
+import {deployContract} from "./utils/contracts";
 export {
     fixtureERC20,
     fixtureERC721,
@@ -48,6 +49,7 @@ describe("Manual", () => {
     let mintAndApproveERC20: SeaportFixtures["mintAndApproveERC20"];
     let set721ApprovalForAll: SeaportFixtures["set721ApprovalForAll"];
     let withBalanceChecks: SeaportFixtures["withBalanceChecks"];
+    let set1155ApprovalForAll: SeaportFixtures["set1155ApprovalForAll"];
 
     before(async () => {
         await faucet(owner.address, provider);
@@ -73,6 +75,7 @@ describe("Manual", () => {
             testERC20,
             testERC721,
             withBalanceChecks,
+            set1155ApprovalForAll
         } = await seaportFixture(owner));
     });
     beforeEach(async () => {
@@ -221,25 +224,31 @@ describe("Manual", () => {
                 getTestItem20(50, 50, owner.address),
             ];
 
-
+            console.log('before createOrder');
             const { order, orderHash } = await createOrder(
                 seller,
                 zone,
                 offer,
                 consideration,
                 0, // FULL_OPEN
+                // 4, // CONTRACT
                 [],
                 null,
                 seller,
                 ethers.constants.HashZero,
                 conduitKeyOne
             );
+            console.log('after createOrder');
 
             await withBalanceChecks([order], 0, undefined, async () => {
+                console.log('adsdsadasd')
                 const tx = marketplaceContract
                     .connect(buyer)
                     .fulfillOrder(order, toKey(0));
+                console.log('adsdsadasd2')
+
                 const receipt = await (await tx).wait();
+                console.log('adsdsadasd3')
                 await checkExpectedEvents(tx, receipt, [
                     {
                         order,
@@ -270,5 +279,122 @@ describe("Manual", () => {
             console.log('ownerNftBalance2: ', ownerNftBalance2.toString())
         });
 
+    })
+
+    describe("Advanced", () => {
+        describe("Contract Orders", async () => {
+            it("Contract Orders ERC721 <=> ERC20 (standard via conduit)", async () => {
+                const { nftId, amount } = await mintAndApprove1155(
+                    seller,
+                    marketplaceContract.address,
+                    10000
+                );
+                // Buyer mints ERC20
+                const tokenAmount = minRandom(100);
+                await mintAndApproveERC20(
+                    buyer,
+                    marketplaceContract.address,
+                    tokenAmount
+                );
+
+                // seller deploys offererContract and approves it for 1155 token
+                const offererContract = await deployContract(
+                    "TestContractOfferer",
+                    owner,
+                    marketplaceContract.address
+                );
+
+                await set1155ApprovalForAll(seller, offererContract.address, true);
+
+                const offer = [
+                    getTestItem1155(nftId, amount.mul(10), amount.mul(10)) as any,
+                ];
+                const consideration = [
+                    getTestItem20(
+                        tokenAmount.sub(100),
+                        tokenAmount.sub(100),
+                        offererContract.address
+                    ) as any
+                ];
+                // const consideration = [
+                //     getItemETH(
+                //         amount.mul(1000),
+                //         amount.mul(1000),
+                //         offererContract.address
+                //     ) as any,
+                // ];
+
+
+                offer[0].identifier = offer[0].identifierOrCriteria;
+                offer[0].amount = offer[0].endAmount;
+
+                consideration[0].identifier = consideration[0].identifierOrCriteria;
+                consideration[0].amount = consideration[0].endAmount;
+
+                await offererContract
+                    .connect(seller)
+                    .activate(offer[0], consideration[0]);
+
+
+                const { order, value } = await createOrder(
+                    seller,
+                    zone,
+                    offer,
+                    consideration,
+                    4 // CONTRACT
+                );
+
+                const contractOffererNonce =
+                    await marketplaceContract.getContractOffererNonce(
+                        offererContract.address
+                    );
+
+                const orderHash =
+                    offererContract.address.toLowerCase() +
+                    contractOffererNonce.toHexString().slice(2).padStart(24, "0");
+
+                const orderStatus = await marketplaceContract.getOrderStatus(orderHash);
+                expect({ ...orderStatus }).to.deep.equal(
+                    buildOrderStatus(false, false, 0, 0)
+                );
+
+
+                order.parameters.offerer = offererContract.address;
+                order.numerator = 1;
+                order.denominator = 1;
+                order.signature = "0x";
+
+                await withBalanceChecks([order], 0, [], async () => {
+                    const tx = marketplaceContract
+                        .connect(buyer)
+                        .fulfillAdvancedOrder(
+                            order,
+                            [],
+                            toKey(0),
+                            ethers.constants.AddressZero,
+                            {
+                                value,
+                            }
+                        );
+                    const receipt = await (await tx).wait();
+                    await checkExpectedEvents(
+                        tx,
+                        receipt,
+                        [
+                            {
+                                order,
+                                orderHash,
+                                fulfiller: buyer.address,
+                                fulfillerConduitKey: toKey(0),
+                            },
+                        ],
+                        undefined,
+                        []
+                    );
+
+                    return receipt;
+                });
+            })
+        })
     })
 })
