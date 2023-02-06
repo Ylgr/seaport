@@ -7,7 +7,7 @@ import { Wallet } from "ethers";
 import {
     ConduitInterface,
     ConsiderationInterface,
-    EIP1271Wallet__factory,
+    EIP1271Wallet__factory, TestERC1155,
     TestERC20, TestERC721,
     TestZone
 } from "../typechain-types";
@@ -35,6 +35,7 @@ describe("Manual", () => {
     let stubZone: TestZone;
     let testERC20: TestERC20;
     let testERC721: TestERC721;
+    let testERC1155: TestERC1155;
 
     let checkExpectedEvents: SeaportFixtures["checkExpectedEvents"];
     let createMirrorAcceptOfferOrder: SeaportFixtures["createMirrorAcceptOfferOrder"];
@@ -74,6 +75,7 @@ describe("Manual", () => {
             stubZone,
             testERC20,
             testERC721,
+            testERC1155,
             withBalanceChecks,
             set1155ApprovalForAll
         } = await seaportFixture(owner));
@@ -281,7 +283,7 @@ describe("Manual", () => {
 
     })
 
-    describe("Advanced", () => {
+    describe("AdvancedContractOrders", () => {
         describe("Contract Orders", async () => {
             it("Contract Orders ERC721 <=> ERC20 (standard via conduit)", async () => {
                 const { nftId, amount } = await mintAndApprove1155(
@@ -331,9 +333,45 @@ describe("Manual", () => {
                 consideration[0].identifier = consideration[0].identifierOrCriteria;
                 consideration[0].amount = consideration[0].endAmount;
 
+                const offererContractBalance1 = await testERC20.balanceOf(offererContract.address)
+                console.log('offererContractBalance1: ', offererContractBalance1.toString())
+
+                const offererContractNftBalance1 = await testERC1155.balanceOf(offererContract.address, nftId)
+                console.log('offererContractNftBalance1: ', offererContractNftBalance1.toString())
+
+                const buyerBalance1 = await testERC20.balanceOf(buyer.address)
+                console.log('buyerBalance1: ', buyerBalance1.toString())
+
+                const buyerNftBalance1 = await testERC1155.balanceOf(buyer.address, nftId)
+                console.log('buyerNftBalance1: ', buyerNftBalance1.toString())
+
+                const sellerBalance1 = await testERC20.balanceOf(seller.address)
+                console.log('sellerBalance1: ', sellerBalance1.toString())
+
+                const sellerNftBalance1 = await testERC1155.balanceOf(seller.address, nftId)
+                console.log('sellerNftBalance1: ', sellerNftBalance1.toString())
+
                 await offererContract
                     .connect(seller)
                     .activate(offer[0], consideration[0]);
+
+                const offererContractBalance2 = await testERC721.balanceOf(offererContract.address)
+                console.log('offererContractBalance2: ', offererContractBalance2.toString())
+
+                const offererContractNftBalance2 = await testERC1155.balanceOf(offererContract.address, nftId)
+                console.log('offererContractNftBalance2: ', offererContractNftBalance2.toString())
+
+                const buyerBalance2 = await testERC20.balanceOf(buyer.address)
+                console.log('buyerBalance2: ', buyerBalance2.toString())
+
+                const buyerNftBalance2 = await testERC1155.balanceOf(buyer.address, nftId)
+                console.log('buyerNftBalance2: ', buyerNftBalance2.toString())
+
+                const sellerBalance2 = await testERC20.balanceOf(seller.address)
+                console.log('sellerBalance2: ', sellerBalance2.toString())
+
+                const sellerNftBalance2 = await testERC1155.balanceOf(seller.address, nftId)
+                console.log('sellerNftBalance2: ', sellerNftBalance2.toString())
 
 
                 const { order, value } = await createOrder(
@@ -394,6 +432,25 @@ describe("Manual", () => {
 
                     return receipt;
                 });
+
+                const offererContractBalance3 = await testERC721.balanceOf(offererContract.address)
+                console.log('offererContractBalance3: ', offererContractBalance3.toString())
+
+                const offererContractNftBalance3 = await testERC1155.balanceOf(offererContract.address, nftId)
+                console.log('offererContractNftBalance3: ', offererContractNftBalance3.toString())
+
+                const buyerBalance3 = await testERC20.balanceOf(buyer.address)
+                console.log('buyerBalance3: ', buyerBalance3.toString())
+
+                const buyerNftBalance3 = await testERC1155.balanceOf(buyer.address, nftId)
+                console.log('buyerNftBalance3: ', buyerNftBalance3.toString())
+
+                const sellerBalance3 = await testERC20.balanceOf(seller.address)
+                console.log('sellerBalance3: ', sellerBalance3.toString())
+
+                const sellerNftBalance3 = await testERC1155.balanceOf(seller.address, nftId)
+                console.log('sellerNftBalance3: ', sellerNftBalance3.toString())
+
             })
         })
     })
