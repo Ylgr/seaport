@@ -113,7 +113,10 @@ describe("Custom", () => {
           assert.equal((await bicERC20.balanceOf(buyer.address)).toString(), '0');
 
           const privateSaleOrderContractTest = await deployContract(
-              "PrivateSaleOrderContractTest"
+              "PrivateSaleOrderContractTest",
+              owner,
+              testERC20.address,
+              bicERC20.address
           );
 
           const offer = [
